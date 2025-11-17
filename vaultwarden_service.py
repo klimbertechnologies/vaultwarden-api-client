@@ -91,6 +91,10 @@ class OrganizationCollectionUserRequest(BaseModel):
 class NewOrgRequest(BaseModel):
     name: str
     email: str
+    
+class OrgCipherRequest(BaseModel):
+    org_id: str
+    cipher_id: str
 
 class LoginCipherRequest(BaseModel):
     name: str
@@ -257,6 +261,27 @@ def create_login_cipher(req: LoginCipherRequest):
     organization = get_organization(vaultwardenservice.bitwarden, req.org_id)
     cipher = organization.create_login_cipher(req.name, req.username, req.password, req.uris, req.uri, req.type, req.folder_id, req.org_id, req.collection_ids, req.notes, req.favorite, req.fields)
     return cipher
+    
+@app.delete("/cipher/delete")
+def delete_cipher(req: OrgCipherRequest):
+    organization = get_organization(vaultwardenservice.bitwarden, req.org_id)
+    cipher = organization.delete_cipher(req.cipher_id)
+    return {"deleted Id": req.cipher_id}
+    
+@app.post("/cipher/card/create")
+def create_card_cipher(req: CardCipherRequest):
+    organization = get_organization(vaultwardenservice.bitwarden, req.org_id)
+    print("in card cipher")
+    if req.brand == "VISA":
+        req.brand = "Visa"
+    if req.brand == "MASTERCARD" or req.brand == "MasterCard":
+        req.brand = "Mastercard"
+    if req.brand == "AMEX" or req.brand == "Americanexpress" or req.brand == "AmericanExpress" or req.brand == "AMERICANEXPRESS":
+        req.brand = "Amex"
+    if req.brand == "RUPAY" or req.brand == "rupay" or req.brand == "Rupay":
+        req.brand = "RuPay"
+    cipher = organization.create_card_cipher(req.name, req.brand, req.cardholderName, req.code, req.expMonth, req.expYear, req.number, req.uris, req.uri, req.type, req.folder_id, req.org_id, req.collection_ids, req.notes, req.favorite, req.fields)
+    return cipher    
 
 # ---------- Root ----------
 @app.get("/")
