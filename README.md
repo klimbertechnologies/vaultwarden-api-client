@@ -15,7 +15,9 @@ similarly you can curl
 ### Collection - User List
 ### Decrypt
 ### Encrypt
-### Entity (Cipher) - Add
+### Entity (Cipher login) - Add
+### Entity (Cipher card) - Add
+### Entity (Cipher) - Delete
 ### Entity (Cipher) - Org level List
 ### Entity (Cipher) - Collection level List
 ### Organisation - Specific Retrieve
