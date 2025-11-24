@@ -42,9 +42,11 @@ app = FastAPI(title="Vaultwarden REST API Service", version="1.0")
 # ---------- Models ----------
 
 class EncryptRequest(BaseModel):
+    org_id: str
     plaintext: str
 
 class DecryptRequest(BaseModel):
+    org_id: str
     ciphertext: str
 
 class OrgRequest(BaseModel):
@@ -96,6 +98,15 @@ class OrgCipherRequest(BaseModel):
     org_id: str
     cipher_id: str
 
+class OrgCipherIdRequest(BaseModel):
+    org_id: str
+    cipher_id: str
+    
+class CipherUpdateRequest(BaseModel):
+    cipher_id: str
+    org_id: str
+    collections: list[str]
+
 class LoginCipherRequest(BaseModel):
     name: str
     username: str = None
@@ -127,13 +138,17 @@ class CardCipherRequest(BaseModel):
     notes: str = None 
     favorite: bool = False 
     fields: list[dict] = None    
-    
+
+class CreateOrgResponse(BaseModel):
+    org_name: str
+    org_id: str
+    collection_name: str
 
 # ---------- Encryption / Decryption ----------
 @app.post("/encrypt")
 def encrypt_value(req: EncryptRequest):
     try:
-        org = get_organization(vaultwardenservice.bitwarden, organization)
+        org = get_organization(vaultwardenservice.bitwarden, req.org_id)
         key = org.key()
         enc = encrypt(2, req.plaintext, key)
         return {"ciphertext": enc}
@@ -143,7 +158,7 @@ def encrypt_value(req: EncryptRequest):
 @app.post("/decrypt")
 def decrypt_value(req: DecryptRequest):
     try:
-        org = get_organization(vaultwardenservice.bitwarden, organization)
+        org = get_organization(vaultwardenservice.bitwarden, req.org_id)
         key = org.key()
         dec = decrypt(req.ciphertext, key).decode("utf-8")        
         return {"plaintext": dec}
@@ -157,6 +172,40 @@ def get_org(req: OrgRequest):
     organization = get_organization(vaultwardenservice.bitwarden, req.org_id)
     #return {"id": organization.Id, "name": organization.Name}
     return organization
+
+@app.post("/org/create")
+def add_org(org: NewOrgRequest):
+    createorgresponse = vaultwardenservice.bitwarden.create_organisation(org.name, org.email)
+    key = createorgresponse.org_key
+    coll_name = decrypt(createorgresponse.collection_name, key).decode("utf-8")
+    print("collection added:", coll_name)
+    data = createorgresponse.response.json()
+    return [
+        CreateOrgResponse(org_name=org.name, org_id=data.get("id"), collection_name=coll_name)
+    ]
+
+@app.get("/org/cipher")
+def get_entity(req: OrgCipherIdRequest):
+    organization = get_organization(vaultwardenservice.bitwarden, req.org_id)
+    ciphers = organization.ciphers()
+    return [
+        {
+            "id": cipher.Id,
+            "name": cipher.Name,
+            "entity details": cipher
+        }
+        for cipher in ciphers
+        if str(cipher.Id) == req.cipher_id
+    ]
+
+def getCipher(id: str, org_id: str) -> CipherDetails:
+    organization = get_organization(vaultwardenservice.bitwarden, org_id)
+    ciphers = organization.ciphers()
+    c = None
+    for cipher in ciphers:
+        if str(cipher.Id) == id:
+            c = cipher
+    return c    
     
 @app.get("/org/ciphers")
 def list_entities(req: OrgRequest):
@@ -172,7 +221,7 @@ def list_entities(req: OrgRequest):
     ]
 
 @app.get("/org/collection/ciphers")
-def list_entities(req:CollectionOrganizationRequest):
+def list_collection_entities(req:CollectionOrganizationRequest):
     organization = get_organization(vaultwardenservice.bitwarden, req.org_id)
     ciphers = organization.ciphers(uuid.UUID(req.collection_id))
     return [
@@ -183,6 +232,15 @@ def list_entities(req:CollectionOrganizationRequest):
         }
         for c in ciphers
     ]
+
+@app.post("/cipher/update")
+def update_entity(req: CipherUpdateRequest):
+    cipher = getCipher(req.cipher_id, req.org_id)
+    if cipher is not None:
+        response = cipher.update_collection(req.collections)
+        return {"updated cipher", response.is_success}
+    else:
+        return {"no matching cipher found, nothing updated!"}  
 
 @app.get("/collection")
 def list_collections(req: CollectionRequest):
@@ -218,7 +276,6 @@ def search_user(req: OrganizationUserRequest):
     organization = get_organization(vaultwardenservice.bitwarden, req.org_id)
     return organization.user_search(req.email)    
 
-
 @app.post("/organization/users/invite")
 def invite(req: InviteRequest):
     organization = get_organization(vaultwardenservice.bitwarden, req.org_id)
@@ -235,12 +292,6 @@ def rename_org(req: OrgRenameRequest):
     else:
         print("organization has no attribute 'rename'")
         return {"id": req.org_id}
-
-#---create org ----
-@app.post("/org/create")
-def add_org(org: NewOrgRequest):
-    response = vaultwardenservice.bitwarden.create_organisation(org.name, org.email)
-    return {response.is_success}
     
 @app.delete("/org/user")
 def delete_user(req: OrganizationUserRequest):
@@ -267,7 +318,7 @@ def delete_cipher(req: OrgCipherRequest):
     organization = get_organization(vaultwardenservice.bitwarden, req.org_id)
     cipher = organization.delete_cipher(req.cipher_id)
     return {"deleted Id": req.cipher_id}
-    
+
 @app.post("/cipher/card/create")
 def create_card_cipher(req: CardCipherRequest):
     organization = get_organization(vaultwardenservice.bitwarden, req.org_id)
