@@ -6,7 +6,7 @@ uvicorn vaultwarden_service:app --reload --port 8080
 
 ## curl
 ### Get org
-curl -X GET http://localhost:8080/org -H "Content-Type: application/json" -d '{"org_id": “532f2c11-5001-6adcc-a42-94522326b33"}'
+curl -X GET http://localhost:8080/org -H "Content-Type: application/json" -d '{"org_id": “5676c11-5001-6adcc-a42-94456326b33"}'
 
 similarly you can curl
 ### Collection - Add
