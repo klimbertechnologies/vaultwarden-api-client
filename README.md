@@ -13,13 +13,18 @@ similarly you can curl
 ### Collection - Delete
 ### Collection - All List
 ### Collection - User List
+
 ### Decrypt
 ### Encrypt
+
 ### Entity (Cipher login) - Add
 ### Entity (Cipher card) - Add
 ### Entity (Cipher) - Delete
 ### Entity (Cipher) - Org level List
 ### Entity (Cipher) - Collection level List
+### Entity (Cipher) - Specific Retrieve
+### Entity (Cipher) - Update
+
 ### Organisation - Specific Retrieve
 ### Organisation - Users List
 ### Organisation - Specific User Search
